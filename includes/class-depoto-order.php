@@ -209,11 +209,16 @@ class Depoto_Order {
 	 */
 	public function process_address( $is_billing ) {
 		if ( $is_billing ) {
+			$street = $this->order->get_billing_address_1();
+			if ($this->order->get_billing_address_2()) {
+				$street .= ' ' . $this->order->get_billing_address_2();
+			}
+
 			/* Billing */
 			$return_array['firstName']   = $this->order->get_billing_first_name() ?? '';
 			$return_array['lastName']    = $this->order->get_billing_last_name() ?? '';
 			$return_array['companyName'] = $this->order->get_billing_company() ?? '';
-			$return_array['street']      = $this->order->get_billing_address_1() ?? '';
+			$return_array['street']      = $street;
 			$return_array['city']        = $this->order->get_billing_city() ?? '';
 			$return_array['zip']         = $this->order->get_billing_postcode() ?? '';
 			$return_array['country']     = $this->order->get_billing_country() ?? '';
@@ -221,11 +226,16 @@ class Depoto_Order {
 			$return_array['phone']       = $this->order->get_billing_phone() ?? '';
 			$return_array['isBilling']   = $is_billing;
 		} else {
+			$street = $this->order->get_shipping_address_1();
+			if ($this->order->get_shipping_address_2()) {
+				$street .= ' ' . $this->order->get_shipping_address_2();
+			}
+
 			/* Shipping */
 			$return_array['firstName']   = $this->order->get_shipping_first_name() ?? '';
 			$return_array['lastName']    = $this->order->get_shipping_last_name() ?? '';
 			$return_array['companyName'] = $this->order->get_shipping_company() ?? '';
-			$return_array['street']      = $this->order->get_shipping_address_1() ?? '';
+			$return_array['street']      = $street;
 			$return_array['city']        = $this->order->get_shipping_city() ?? '';
 			$return_array['zip']         = $this->order->get_shipping_postcode() ?? '';
 			$return_array['country']     = $this->order->get_shipping_country() ?? '';
@@ -293,6 +303,24 @@ class Depoto_Order {
 			$depoto_id = get_post_meta( $product->get_id(), '_depoto_id', true );
 			if ( ! empty( $depoto_id ) ) {
 				$product_item['product'] = $depoto_id;
+			}
+
+			// WPML compatibility - get SKU from translated product.
+			if ( defined( 'ICL_SITEPRESS_VERSION' ) && !$product_item['product']) {
+				$default_lang = apply_filters('wpml_default_language', NULL );
+				if (method_exists($product, 'get_variation_id')) {
+					$id = $product->get_variation_id() ?: $product->get_id();
+				} else {
+					$id = $product->get_id();
+				}
+
+				$original_id  = apply_filters( 'wpml_object_id', $product->get_id(), get_post_type($id), false, $default_lang );
+				if ($original_id) {
+					$depoto_id = get_post_meta( $original_id, '_depoto_id', true );
+					if ( ! empty( $depoto_id ) ) {
+						$product_item['product'] = $depoto_id;
+					}
+				}
 			}
 
 			$product_item['code']     = $product->get_sku();
