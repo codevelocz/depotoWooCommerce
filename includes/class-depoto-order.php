@@ -37,6 +37,15 @@ class Depoto_Order {
 		if ( $this->get_packeta_point_id() ) {
 			return true;
 		}
+
+		if ( $this->is_one_by_allegro_shipping() && ! empty( $this->order->get_meta( 'tone_pickup_branch_id' ) ) ) {
+			return true;
+		}
+
+		if ( $this->is_gls_parcelshop_shipping() && ! empty( $this->order->get_meta( 'tgls_pickup_id' ) ) ) {
+			return true;
+		}
+
 		$billing_address  = $this->order->get_address();
 		$shipping_address = $this->order->get_address( 'shipping' );
 
@@ -138,6 +147,105 @@ class Depoto_Order {
 		}
 
 		return $result;
+	}
+
+	private function is_one_by_allegro_shipping(): bool {
+		$shipping_methods = $this->order->get_shipping_methods();
+
+		if ( empty( $shipping_methods ) ) {
+			return false;
+		}
+
+		/** @var WC_Order_Item_Shipping $shipping_method */
+		$shipping_method = current( $shipping_methods );
+
+		if ( ! $shipping_method ) {
+			return false;
+		}
+
+		$method_id    = (string) $shipping_method->get_method_id();
+
+		if ( stripos( $method_id, 'toret_tone_point' ) !== false || stripos( $method_id, 'o' ) !== false ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private function get_one_by_allegro_pickup_data(): array {
+		if ( ! $this->is_one_by_allegro_shipping() ) {
+			return [];
+		}
+
+		$branch_id      = $this->order->get_meta( 'tone_pickup_branch_id' );
+		$branch_name    = $this->order->get_meta( 'tone_pickup_branch_name' );
+		$branch_address = $this->order->get_meta( 'tone_pickup_branch_adresa' );
+		$branch_zip     = $this->order->get_meta( 'tone_pickup_branch_psc' );
+
+		if ( empty( $branch_id ) ) {
+			return [];
+		}
+
+		$city = '';
+		if ( ! empty( $branch_address ) ) {
+			$parts = preg_split( '/\s+/', trim( $branch_address ) );
+			if ( ! empty( $parts ) ) {
+				$city = end( $parts );
+			}
+		}
+
+		return [
+			'branchId'    => $branch_id,
+			'companyName' => $branch_name ?: '',
+			'street'      => $branch_address ?: '',
+			'zip'         => $branch_zip ?: '',
+			'city'        => $city ?: '',
+		];
+	}
+
+	private function is_gls_parcelshop_shipping(): bool {
+		$shipping_methods = $this->order->get_shipping_methods();
+
+		if ( empty( $shipping_methods ) ) {
+			return false;
+		}
+
+		/** @var WC_Order_Item_Shipping $shipping_method */
+		$shipping_method = current( $shipping_methods );
+
+		if ( ! $shipping_method ) {
+			return false;
+		}
+
+		$method_id = (string) $shipping_method->get_method_id();
+
+		return 'toret_gls_parcelshop' === $method_id;
+	}
+
+	private function get_gls_parcelshop_pickup_data(): array {
+		if ( ! $this->is_gls_parcelshop_shipping() ) {
+			return [];
+		}
+
+		$branch_id      = $this->order->get_meta( 'tgls_pickup_id' );
+		$branch_name    = $this->order->get_meta( 'tgls_pickup_name' );
+		$branch_address = $this->order->get_meta( 'tgls_pickup_address' );
+		$branch_city    = $this->order->get_meta( 'tgls_pickup_city' );
+		$branch_zip     = $this->order->get_meta( 'tgls_pickup_code' );
+		$branch_country = $this->order->get_meta( 'tgls_pickup_country' );
+
+		if ( empty( $branch_id ) ) {
+			return [];
+		}
+
+		return [
+			'branchId'    => $branch_id,
+			'companyName' => $branch_name ?: '',
+			'street'      => $branch_address ?: '',
+			'zip'         => $branch_zip ?: '',
+			'city'        => $branch_city ?: '',
+			'country'     => $branch_country ?: '',
+		];
 	}
 
 	public function process_undelivered_orders() {
@@ -257,6 +365,58 @@ class Depoto_Order {
 			$return_array['phone']       = $this->order->get_billing_phone() ?? ''; // here is the billing value because of there is nothing as get_shipping_phone
 			if ( $point_id = $this->get_packeta_point_id() ) {
 				$return_array['branchId'] = $point_id;
+			}
+
+			if ( $this->is_one_by_allegro_shipping() ) {
+				$one_pickup_data = $this->get_one_by_allegro_pickup_data();
+
+				if ( ! empty( $one_pickup_data ) ) {
+					$return_array['branchId'] = $one_pickup_data['branchId'];
+
+					if ( ! empty( $one_pickup_data['companyName'] ) ) {
+						$return_array['companyName'] = $one_pickup_data['companyName'];
+					}
+
+					if ( ! empty( $one_pickup_data['street'] ) ) {
+						$return_array['street'] = $one_pickup_data['street'];
+					}
+
+					if ( ! empty( $one_pickup_data['zip'] ) ) {
+						$return_array['zip'] = $one_pickup_data['zip'];
+					}
+
+					if ( ! empty( $one_pickup_data['city'] ) ) {
+						$return_array['city'] = $one_pickup_data['city'];
+					}
+				}
+			}
+
+			if ( $this->is_gls_parcelshop_shipping() ) {
+				$gls_pickup_data = $this->get_gls_parcelshop_pickup_data();
+
+				if ( ! empty( $gls_pickup_data ) ) {
+					$return_array['branchId'] = $gls_pickup_data['branchId'];
+
+					if ( ! empty( $gls_pickup_data['companyName'] ) ) {
+						$return_array['companyName'] = $gls_pickup_data['companyName'];
+					}
+
+					if ( ! empty( $gls_pickup_data['street'] ) ) {
+						$return_array['street'] = $gls_pickup_data['street'];
+					}
+
+					if ( ! empty( $gls_pickup_data['zip'] ) ) {
+						$return_array['zip'] = $gls_pickup_data['zip'];
+					}
+
+					if ( ! empty( $gls_pickup_data['city'] ) ) {
+						$return_array['city'] = $gls_pickup_data['city'];
+					}
+
+					if ( ! empty( $gls_pickup_data['country'] ) ) {
+						$return_array['country'] = $gls_pickup_data['country'];
+					}
+				}
 			}
 
 			$return_array['isBilling'] = $is_billing;
