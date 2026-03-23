@@ -274,11 +274,30 @@ class Depoto_Order {
 	private function process_carrier(): string {
 		$carrier = current( $this->order->get_shipping_methods() );
 
-		/**@var WC_Order_Item_Shipping */
-		$carrier_method_id    = $carrier->get_method_id();
-		$paired_depoto_method = get_option( 'depoto_shippings' )[ $carrier_method_id ];
+		if ( ! $carrier ) {
+			return '';
+		}
 
-		return $paired_depoto_method ?? '';
+		$carrier_method_id   = $carrier->get_method_id();
+		$carrier_instance_id = method_exists( $carrier, 'get_instance_id' ) ? $carrier->get_instance_id() : 0;
+
+		$pairing_key = $carrier_method_id . ':' . $carrier_instance_id;
+
+		$depoto_shippings = get_option( 'depoto_shippings' );
+
+		if ( empty( $depoto_shippings ) || ! is_array( $depoto_shippings ) ) {
+			return '';
+		}
+
+		if ( ! empty( $depoto_shippings[ $pairing_key ] ) ) {
+			return $depoto_shippings[ $pairing_key ];
+		}
+
+		if ( ! empty( $depoto_shippings[ $carrier_method_id ] ) ) {
+			return $depoto_shippings[ $carrier_method_id ];
+		}
+
+		return '';
 	}
 
 	/**

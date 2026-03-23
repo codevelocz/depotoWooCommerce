@@ -42,18 +42,50 @@ class Depoto_Shippings
 	 */
 	private function get_woocommerce_available_shipping_methods(): array
 	{
-		$available_shipping =  WC()->shipping()->load_shipping_methods();
-
-		if (empty($available_shipping)) {
-			return [];
-		}
 		$available_shippings_pairs = [];
-		foreach ($available_shipping as $method_id => $method_obj) {
-			if ($method_obj->is_enabled()) {
-				$available_shippings_pairs[$method_id] = $method_obj->get_method_title();
-			}
+
+	$zones = WC_Shipping_Zones::get_zones();
+
+	$default_zone = new WC_Shipping_Zone(0);
+	$zones[] = [
+		'zone_id'   => 0,
+		'zone_name' => $default_zone->get_zone_name(),
+	];
+
+	foreach ($zones as $zone_data) {
+		$zone = new WC_Shipping_Zone($zone_data['zone_id']);
+		$methods = $zone->get_shipping_methods(true);
+
+		if (empty($methods)) {
+			continue;
 		}
-		return $available_shippings_pairs;
+
+		foreach ($methods as $method) {
+			if (empty($method) || 'yes' !== $method->enabled) {
+				continue;
+			}
+
+			$method_id   = $method->id;
+			$instance_id = $method->instance_id ?? 0;
+
+			$key = $method_id . ':' . $instance_id;
+
+			$title = $method->get_title();
+			if (empty($title)) {
+				$title = $method->get_method_title();
+			}
+
+			$zone_name = $zone->get_zone_name();
+
+			$available_shippings_pairs[$key] = sprintf(
+				'%s (%s)',
+				$title,
+				$zone_name
+			);
+		}
+	}
+
+	return $available_shippings_pairs;
 	}
 
 	public function add_fields()
