@@ -69,6 +69,12 @@ class Depoto_Order {
 		 */
 		foreach ( $taxes_options as $wc_tax_id => $depoto_id ) {
 			$tax_id                      = substr( $wc_tax_id, 7 ); // format is 'tax_id_2' so we want just the number of id
+
+			if ( '0' === (string) $tax_id ) {
+				$result[0] = $depoto_id;
+				continue;
+			}
+
 			$tax_rate_percent            = WC_Tax::get_rate_percent_value( intval( $tax_id ) );
 			$result[ $tax_rate_percent ] = $depoto_id;
 		}
@@ -78,6 +84,10 @@ class Depoto_Order {
 
 	private function get_vat_depoto_id( $price_with_tax, $tax ) {
 		$res_depoto_vat_id = 0;
+
+		if ( ! wc_tax_enabled() && isset( $this->taxes_pairs[0] ) ) {
+			return (int) $this->taxes_pairs[0];
+		}
 
 		if ( ! empty( $price_with_tax ) && ! empty( $tax ) ) {
 			$percent           = intval( round( ( 100 / $price_with_tax ) * $tax ) );
@@ -96,6 +106,10 @@ class Depoto_Order {
 	}
 
 	private function get_shipping_vat_id() {
+		if ( ! wc_tax_enabled() && isset( $this->taxes_pairs[0] ) ) {
+			return (int) $this->taxes_pairs[0];
+		}
+
 		$taxes = [];
 		foreach ( $this->order->get_taxes() as $tax ) {
 			$taxes[] = $tax->get_rate_percent();

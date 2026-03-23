@@ -42,6 +42,12 @@ class Depoto_Taxes
 	 */
 	private function get_woocommerce_available_taxes(): array
 	{
+		if ( ! wc_tax_enabled() ) {
+			return [
+				'tax_id_0' => __( 'Tax when WooCommerce taxes are disabled', 'depoto' ),
+			];
+		}
+
 		$class_slugs = WC_Tax::get_tax_class_slugs();
 		array_unshift($class_slugs, ''); // Standard rate has no slug, so we have to add it this way
 
