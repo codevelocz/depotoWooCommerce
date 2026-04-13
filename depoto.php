@@ -288,6 +288,12 @@ class Depoto {
 				'code'      => $p->get_sku(),
 			];
 
+			$ean = $this->get_product_ean( $p );
+			if ( $ean ) {
+				$data['ean'] = $ean;
+			}
+
+
 			if ($p->get_price()) {
 				$data['sellPrice'] = $p->get_price();
 			}
@@ -353,6 +359,33 @@ class Depoto {
 		if ( ! empty( $products_to_import ) ) {
 			as_enqueue_async_action( 'depoto_import_products' );
 		}
+	}
+
+
+	private function get_product_ean( $product ): string {
+		if ( method_exists( $product, 'get_global_unique_id' ) ) {
+			$ean = $product->get_global_unique_id();
+			if ( ! empty( $ean ) ) {
+				return (string) $ean;
+			}
+		}
+
+		$meta_keys = [
+			'_ean',
+			'ean',
+			'_alg_ean',
+			'_global_unique_id',
+			'_wpm_gtin_code',
+		];
+
+		foreach ( $meta_keys as $meta_key ) {
+			$ean = $product->get_meta( $meta_key );
+			if ( ! empty( $ean ) ) {
+				return (string) $ean;
+			}
+		}
+
+		return '';
 	}
 }
 
