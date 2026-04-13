@@ -46,6 +46,10 @@ class Depoto_Order {
 			return true;
 		}
 
+		if ( $this->is_toret_balikovna_shipping() && ! empty( $this->order->get_meta( 'tcp_pickup_id' ) ) ) {
+			return true;
+		}
+
 		$billing_address  = $this->order->get_address();
 		$shipping_address = $this->order->get_address( 'shipping' );
 
@@ -248,6 +252,39 @@ class Depoto_Order {
 		];
 	}
 
+	private function is_toret_balikovna_shipping(): bool {
+		$pickup_type = (string) $this->order->get_meta( 'tcp_pickup_type' );
+		$pickup_id   = (string) $this->order->get_meta( 'tcp_pickup_id' );
+
+		return ! empty( $pickup_id ) && 'BALIKOVNY' === strtoupper( $pickup_type );
+	}
+
+	private function get_toret_balikovna_pickup_data(): array {
+		if ( ! $this->is_toret_balikovna_shipping() ) {
+			return [];
+		}
+
+		$branch_id      = $this->order->get_meta( 'tcp_pickup_id' );
+		$branch_name    = $this->order->get_meta( 'tcp_pickup_name' );
+		$branch_address = $this->order->get_meta( 'tcp_pickup_street' );
+		$branch_city    = $this->order->get_meta( 'tcp_pickup_city' );
+		$branch_zip     = $this->order->get_meta( 'tcp_pickup_psc' );
+		$branch_country = $this->order->get_meta( 'tcp_pickup_state' );
+
+		if ( empty( $branch_id ) ) {
+			return [];
+		}
+
+		return [
+			'branchId'    => $branch_id,
+			'companyName' => $branch_name ?: '',
+			'street'      => $branch_address ?: '',
+			'zip'         => $branch_zip ?: '',
+			'city'        => $branch_city ?: '',
+			'country'     => $branch_country ?: '',
+		];
+	}
+
 	public function process_undelivered_orders() {
 		$initial_date = date( 'Y-m-d', strtotime( "-1 week" ) );
 		$final_date   = date( 'Y-m-d' );
@@ -415,6 +452,34 @@ class Depoto_Order {
 
 					if ( ! empty( $gls_pickup_data['country'] ) ) {
 						$return_array['country'] = $gls_pickup_data['country'];
+					}
+				}
+			}
+
+			if ( $this->is_toret_balikovna_shipping() ) {
+				$balikovna_pickup_data = $this->get_toret_balikovna_pickup_data();
+
+				if ( ! empty( $balikovna_pickup_data ) ) {
+					$return_array['branchId'] = $balikovna_pickup_data['branchId'];
+
+					if ( ! empty( $balikovna_pickup_data['companyName'] ) ) {
+						$return_array['companyName'] = $balikovna_pickup_data['companyName'];
+					}
+
+					if ( ! empty( $balikovna_pickup_data['street'] ) ) {
+						$return_array['street'] = $balikovna_pickup_data['street'];
+					}
+
+					if ( ! empty( $balikovna_pickup_data['zip'] ) ) {
+						$return_array['zip'] = $balikovna_pickup_data['zip'];
+					}
+
+					if ( ! empty( $balikovna_pickup_data['city'] ) ) {
+						$return_array['city'] = $balikovna_pickup_data['city'];
+					}
+
+					if ( ! empty( $balikovna_pickup_data['country'] ) ) {
+						$return_array['country'] = $balikovna_pickup_data['country'];
 					}
 				}
 			}
