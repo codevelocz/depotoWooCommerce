@@ -491,6 +491,14 @@ class Depoto_Order {
 	}
 
 	/**
+	 * Check if given item is a WPC Product Bundle parent item.
+	 */
+
+	private function is_wpc_product_bundle_parent_item( WC_Order_Item_Product $item ): bool {
+		return ! empty( $item->get_meta( '_woosb_ids' ) );
+	}
+
+	/**
 	 * Get order sipping method and pair it according to depoto method
 	 * Woocommerce shipping method and depoto shipping method are paired in plugin Depoto.
 	 *
@@ -554,6 +562,10 @@ class Depoto_Order {
 
 		/** @var WC_Order_Item_Product */
 		foreach ( $items as $item_id => $item ) {
+			if ( $this->is_wpc_product_bundle_parent_item( $item ) ) {
+				continue;
+			}
+
 			$product_item = [];
 
 			$product = $item->get_product();
@@ -585,7 +597,8 @@ class Depoto_Order {
 			$product_item['name']     = $item->get_name();
 			$product_item['type']     = 'product';
 			$product_item['quantity'] = $item->get_quantity();
-			$product_item['price']    = $product->get_price();
+			$quantity                 = max( 1, (int) $item->get_quantity() );
+			$product_item['price']    = round( ( $item->get_total() + $item->get_total_tax() ) / $quantity );
 			$product_item['vat']      = (int)$this->get_vat_depoto_id( $item->get_subtotal(), $item->get_subtotal_tax() );
 
 			$return_array[] = $product_item;
