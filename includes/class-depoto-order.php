@@ -460,8 +460,6 @@ class Depoto_Order {
 				$balikovna_pickup_data = $this->get_toret_balikovna_pickup_data();
 
 				if ( ! empty( $balikovna_pickup_data ) ) {
-					$return_array['branchId'] = $balikovna_pickup_data['branchId'];
-
 					if ( ! empty( $balikovna_pickup_data['companyName'] ) ) {
 						$return_array['companyName'] = $balikovna_pickup_data['companyName'];
 					}
